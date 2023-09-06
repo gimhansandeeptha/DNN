@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import csv
 
 class ActivationFunctions:
     @staticmethod
@@ -101,67 +102,80 @@ class NeuralNetwork:
             weighted_sum = np.dot(self.weights[i],output_vector)+ self.biases[i]
             output_vector = self.activations[i](weighted_sum)
             self.input_for_next_layer.append(output_vector)
-        # print(self.input_for_next_layer)
 
     def backward(self,learning_rate):
         der_softmax_and_cost = self.input_for_next_layer[-1] - self.output_values
         backderivative= der_softmax_and_cost
         new_weights= []
         new_biases= []
-
         # network has to have at least one hidden layer
         for i in range(len(self.input_for_next_layer)-2,-1,-1):
+
+            # get the derivative (1 or 0) for ReLU
+            if self.activations[i] is ActivationFunctions.relu:
+                for j in range(len(self.input_for_next_layer[i+1])):
+                    if self.input_for_next_layer[i+1][j][0] <= 0:
+                        backderivative[j][0] =0
+
             # Adjust the bias
-            # print(f"Input for next layer \n{self.input_for_next_layer}\n")
-            # print(i)
-            # print(self.biases[i])
             new_biases.insert(0,self.biases[i]-learning_rate*backderivative)
             
             # Adjust the weights
             adjust = np.dot(backderivative,self.input_for_next_layer[i].T)
+
             new_weights.insert(0,self.weights[i] - learning_rate*adjust)
-
             backderivative = np.dot(self.weights[i].T,backderivative)
-            # print(f"Backderivative Before \n{backderivative}\n")
-            if self.activations[i] is ActivationFunctions.relu:
-                for j in range(len(self.input_for_next_layer[i])):
-                    if self.input_for_next_layer[i][j][0] <= 0:
-                        backderivative[j][0] =0
-                # print(f"Backderivative After \n{backderivative}\n")
+            
 
-        # print(f"Old weights \n{self.weights} \n")
         self.weights = new_weights
-        # print(f"new weights \n{self.weights} \n")
-
-        # print(f"Old biases \n{self.biases} \n")
         self.biases = new_biases
-        # print(f"new biases \n{self.biases} \n")
             
     
-    def train(self,loss_function:LossFunctions,learning_rate:float): 
+    def train(self,input_list,output_list,loss_function:LossFunctions,learning_rate:float): 
         self.loss_function = loss_function
         i = 0
-        while True:
-            self.foreward()
-            i+=1
-            # print(f"weights after {i} th foreword pass  \n{self.weights} \n")
-            # print(f"biases after {i} th foreword pass  \n{self.biases} \n")
-            
-            loss = loss_function(y_true=self.output_values,y_pred=self.input_for_next_layer[-1])
-            print(f"The loss of the iteration {i} is: \n{loss}\n")
+        with open("loss_file.txt", 'w') as output_file:
+            for x, y in zip(input_list,output_list):
+                self.set_input_output(x,y)
+                self.foreward()
+                i+=1
+                
+                loss = loss_function(y_true=self.output_values,y_pred=self.input_for_next_layer[-1])
+                loss_info = f"The loss of the iteration {i} is:   {loss}\n"
+                output_file.write(loss_info)
 
-            if loss<=0.01:
-                break
-
-            self.backward(learning_rate)
-            # print(f"weights after {i} th backword pass  \n{self.weights} \n")
-            # print(f"biases after {i} th backword pass  \n{self.biases} \n")
+                self.backward(learning_rate)
         
 
-neural = NeuralNetwork([2,3,2])
-neural.create()
-neural.set_input_output(inputs=[1,2],outputs=[0,1])
-neural.set_activations([ActivationFunctions.relu,ActivationFunctions.softmax])
-neural.train(loss_function=LossFunctions.categorical_crossentropy,learning_rate=0.1)
-# print()
+def process():
+    one_hot_encoded_y = []
+    list_x =[]
+    with open('y_train.csv', 'r') as y_file:
+        csv_reader = csv.reader(y_file)
+        for row in csv_reader:
+            label = int(row[0])
+            one_hot_label = [0] * 4  # Assuming 4 classes (0, 1, 2, 3)
+            one_hot_label[label] = 1
+            one_hot_encoded_y.append(one_hot_label)
 
+    with open('x_train.csv', 'r') as x_file:
+        csv_reader_x = csv.reader(x_file)
+        
+        # Iterate through each row in the CSV file
+        for x_row in csv_reader_x:
+            x_data = [int(value) for value in x_row]
+            # Check if the row contains exactly 14 integers
+            if len(x_data) == 14:
+                list_x.append(x_data)
+            else:
+                raise ValueError(f"Skipping row with incorrect number of values: {row}")
+            
+    return list_x , one_hot_encoded_y
+    
+
+inputs, outputs = process()
+
+neural = NeuralNetwork([14,100,40,4])
+neural.create()
+neural.set_activations([ActivationFunctions.relu,ActivationFunctions.relu,ActivationFunctions.softmax])
+neural.train(input_list=inputs,output_list=outputs,loss_function=LossFunctions.categorical_crossentropy,learning_rate=0.01)
