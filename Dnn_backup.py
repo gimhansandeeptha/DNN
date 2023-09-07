@@ -132,8 +132,13 @@ class NeuralNetwork:
             weight_derivative.insert(0,adjust)
 
             backderivative = np.dot(self.weights[i].T,backderivative)
+            
 
+        # self.weights = new_weights
+        # self.biases = new_biases
         return weight_derivative,bias_derivative
+
+    # def update(self):
 
             
     
@@ -144,61 +149,65 @@ class NeuralNetwork:
         test_accuracies =[]
         train_accuracies =[]
         i = 0
+        with open("train_lost.txt", 'w') as output_file:
             
-        input_sample_length = (len(output_list)//batch_size)
-        for epoch in range(epoch_size):
-            
-            combined_lists = list(zip(input_list,output_list))
-            random.shuffle(combined_lists)
-            shuffled_list1, shuffled_list2 = zip(*combined_lists)
-            epoch_loss = 0
-
-            for i in range (input_sample_length):
-                batch_weight_derivative =[]
-                batch_bias_derivatives = []
-                batch_loss =0
-                for j in range(batch_size):
-                    x = shuffled_list1[i*batch_size+j]
-                    y = shuffled_list2[i*batch_size+j]
-                    self.set_input_output(x,y)
-                    self.foreward()
-
-                    batch_loss += loss_function(y_true=self.output_values,y_pred=self.input_for_next_layer[-1])
-
-                    weight_derivative,bias_derivative = self.backward()
-                    batch_weight_derivative.append(weight_derivative)
-                    batch_bias_derivatives.append(bias_derivative)
+            input_sample_length = (len(output_list)//batch_size)
+            for epoch in range(epoch_size):
                 
-                batch_loss = batch_loss/batch_size
-                epoch_loss+=batch_loss
-                # losses.append(batch_loss)
+                combined_lists = list(zip(input_list,output_list))
+                random.shuffle(combined_lists)
+                shuffled_list1, shuffled_list2 = zip(*combined_lists)
+                epoch_loss = 0
 
-                sum_weight_derivative = batch_weight_derivative[0]
-                sum_bias_derivative = batch_bias_derivatives[0]
-                for i in range(1,batch_size):
-                    for j in range(self.size-1): # len(batch_weight_derivative[i])
-                        sum_weight_derivative[j] = sum_weight_derivative[j]+batch_weight_derivative[i][j]
-                        sum_bias_derivative[j] = sum_bias_derivative[j]+batch_bias_derivatives[i][j]
+                for i in range (input_sample_length):
+                    batch_weight_derivative =[]
+                    batch_bias_derivatives = []
+                    batch_loss =0
+                    for j in range(batch_size):
+                        x = shuffled_list1[i*batch_size+j]
+                        y = shuffled_list2[i*batch_size+j]
+                        self.set_input_output(x,y)
+                        self.foreward()
 
-                for k in range(self.size-1): # len(sum_weight_derivative)
-                    sum_weight_derivative[k] = sum_weight_derivative[k]/batch_size
-                    self.weights[k] = self.weights[k] - learning_rate*sum_weight_derivative[k]
+                        batch_loss += loss_function(y_true=self.output_values,y_pred=self.input_for_next_layer[-1])
 
-                    sum_bias_derivative[k] = sum_bias_derivative[k]/batch_size
-                    self.biases[k] = self.biases[k] - learning_rate*sum_bias_derivative[k]
+                        weight_derivative,bias_derivative = self.backward()
+                        batch_weight_derivative.append(weight_derivative)
+                        batch_bias_derivatives.append(bias_derivative)
+                    
+                    batch_loss = batch_loss/batch_size
+                    epoch_loss+=batch_loss
+                    # losses.append(batch_loss)
 
-            losses.append(epoch_loss/epoch_size)
-            train_inputs, train_outputs = process(x='x_train.csv',y="y_train.csv")
-            print(f"epoch {epoch+1} train", end=" ")
-            train_loss,train_accuracy = neural.predict(train_inputs,train_outputs)
-            train_accuracies.append(train_accuracy)
+                    loss_info = f"The loss of the epoch {epoch} batch {i} is:   {batch_loss}\n"
+                    output_file.write(loss_info)
 
-            test_inputs, test_outputs = process(x='x_test.csv', y="y_test.csv")
-            print(f"epoch {epoch+1} test", end=" ")
-            test_loss,test_accuracy = neural.predict(test_inputs,test_outputs)
-            print()
-            test_losses.append(sum(test_loss)/len(test_loss))
-            test_accuracies.append(test_accuracy)
+                    sum_weight_derivative = batch_weight_derivative[0]
+                    sum_bias_derivative = batch_bias_derivatives[0]
+                    for i in range(1,batch_size):
+                        for j in range(self.size-1): # len(batch_weight_derivative[i])
+                            sum_weight_derivative[j] = sum_weight_derivative[j]+batch_weight_derivative[i][j]
+                            sum_bias_derivative[j] = sum_bias_derivative[j]+batch_bias_derivatives[i][j]
+
+                    for k in range(self.size-1): # len(sum_weight_derivative)
+                        sum_weight_derivative[k] = sum_weight_derivative[k]/batch_size
+                        self.weights[k] = self.weights[k] - learning_rate*sum_weight_derivative[k]
+
+                        sum_bias_derivative[k] = sum_bias_derivative[k]/batch_size
+                        self.biases[k] = self.biases[k] - learning_rate*sum_bias_derivative[k]
+
+                losses.append(epoch_loss/epoch_size)
+                train_inputs, train_outputs = process(x='x_train.csv',y="y_train.csv")
+                print(f"epoch {epoch+1} train", end=" ")
+                train_loss,train_accuracy = neural.predict(train_inputs,train_outputs)
+                train_accuracies.append(train_accuracy)
+
+                test_inputs, test_outputs = process(x='x_test.csv', y="y_test.csv")
+                print(f"epoch {epoch+1} test", end=" ")
+                test_loss,test_accuracy = neural.predict(test_inputs,test_outputs)
+                print()
+                test_losses.append(sum(test_loss)/len(test_loss))
+                test_accuracies.append(test_accuracy)
         return losses,test_losses,train_accuracies,test_accuracies
     
     def predict(self, input_list, output_list):
@@ -206,7 +215,7 @@ class NeuralNetwork:
         correctly_classified =0
         incorrectly_classified =0
         i=0
-        with open('test_classifications.csv', 'w') as file:
+        with open("test_lost.txt", 'w') as output_file, open('test_classifications.csv', 'w') as file:
             for x, y in zip(input_list,output_list):
                 self.set_input_output(x,y)
                 self.foreward()
@@ -214,6 +223,9 @@ class NeuralNetwork:
                 
                 loss = self.loss_function(y_true=self.output_values,y_pred=self.input_for_next_layer[-1])
                 losses.append(loss)
+
+                loss_info = f"The loss of the testing sample {i} is:   {loss}\n"
+                output_file.write(loss_info)
 
                 max_index = np.argmax(self.input_for_next_layer[-1]) # self.input_for_next_layer[-1] is same as softmax output
 
@@ -224,6 +236,8 @@ class NeuralNetwork:
 
                 file.write(f"{max_index}\n")
                 
+        # print(f"number of correctly classified samples: {correctly_classified}")
+        # print(f"number of incorrectly classified samples: {incorrectly_classified}")
         accuracy = correctly_classified/(correctly_classified+incorrectly_classified)
         print(f"Accuracy: {accuracy}")
 
@@ -268,36 +282,7 @@ train_losses,test_losses,train_accuracies,test_accuracies= neural.train(input_li
 
 # test_inputs, test_outputs = process(x='x_test.csv', y="y_test.csv")
 # neural.predict(test_inputs,test_outputs)
-rate = str(learning_rate)
-file_name= "lists_"+rate+".pkl"
-with open(file_name, 'wb') as file:
+
+with open('lists.pkl', 'wb') as file:
     pickle.dump([train_losses, test_losses, train_accuracies, test_accuracies], file)
-
-# Create the plot
-plt.figure(figsize=(8, 6))
-plt.plot( train_losses, marker='o', linestyle='-')
-plt.title(f'Iterations vs. Training Loss (learning rate = {learning_rate})')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.grid(True)
-plt.show()
-
-plt.figure(figsize=(8, 6))
-plt.plot( test_losses, marker='o', linestyle='-')
-plt.title(f'Iterations vs. Testing Loss (learning rate = {learning_rate})')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.grid(True)
-plt.show()
-
-plt.figure(figsize=(8, 6))
-plt.plot(train_accuracies, marker='o', linestyle='-', label='Training Accuracy', color='blue',alpha=0.6)
-plt.plot(test_accuracies, marker='o', linestyle='-', label='Testing Accuracy', color='red', alpha=0.6)
-plt.title(f'Iterations vs. Training and Testing Accuracy (learning rate = {learning_rate})')
-plt.xlabel('Epochs')
-plt.ylabel('Accuracy')
-plt.grid(True)
-plt.legend()  # Show the legend with labels
-plt.show() 
-
 
