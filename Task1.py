@@ -95,9 +95,6 @@ class NeuralNetwork:
             if self.activations[i] is ActivationFunctions.relu:
                 for j in range(len(self.input_for_next_layer[i+1])):
                     if self.input_for_next_layer[i+1][j][0] <= 0:
-                        # print(backderivative.T)
-                        # print("Hello")
-                        # print(self.input_for_next_layer[i+1].T)
                         backderivative[j][0] =0
 
             # Adjust the bias

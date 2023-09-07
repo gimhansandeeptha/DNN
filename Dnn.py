@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import csv
+import matplotlib.pyplot as plt
 
 class ActivationFunctions:
     @staticmethod
@@ -103,11 +104,13 @@ class NeuralNetwork:
             output_vector = self.activations[i](weighted_sum)
             self.input_for_next_layer.append(output_vector)
 
-    def backward(self,learning_rate):
+    def backward(self):
         der_softmax_and_cost = self.input_for_next_layer[-1] - self.output_values
         backderivative= der_softmax_and_cost
-        new_weights= []
-        new_biases= []
+        # new_weights= []
+        # new_biases= []
+        weight_derivative =[]
+        bias_derivative =[]
         # network has to have at least one hidden layer
         for i in range(len(self.input_for_next_layer)-2,-1,-1):
 
@@ -118,39 +121,133 @@ class NeuralNetwork:
                         backderivative[j][0] =0
 
             # Adjust the bias
-            new_biases.insert(0,self.biases[i]-learning_rate*backderivative)
+            # new_biases.insert(0,self.biases[i]-learning_rate*backderivative)
+            bias_derivative.insert(0,backderivative)
             
             # Adjust the weights
             adjust = np.dot(backderivative,self.input_for_next_layer[i].T)
 
-            new_weights.insert(0,self.weights[i] - learning_rate*adjust)
+            # new_weights.insert(0,self.weights[i] - learning_rate*adjust)
+            weight_derivative.insert(0,adjust)
+
             backderivative = np.dot(self.weights[i].T,backderivative)
             
 
-        self.weights = new_weights
-        self.biases = new_biases
+        # self.weights = new_weights
+        # self.biases = new_biases
+        return weight_derivative,bias_derivative
+
+    # def update(self):
+
             
     
-    def train(self,input_list,output_list,loss_function:LossFunctions,learning_rate:float): 
+    def train(self,input_list,output_list,loss_function:LossFunctions,learning_rate:float,batch_size=128,epoch_size=100): 
         self.loss_function = loss_function
+        losses =[]
+        test_losses =[]
+        test_accuracies =[]
+        train_accuracies =[]
         i = 0
-        with open("loss_file.txt", 'w') as output_file:
+        with open("train_lost.txt", 'w') as output_file:
+            
+            input_sample_length = (len(output_list)//batch_size)
+            for epoch in range(epoch_size):
+                
+                combined_lists = list(zip(input_list,output_list))
+                random.shuffle(combined_lists)
+                shuffled_list1, shuffled_list2 = zip(*combined_lists)
+                epoch_loss = 0
+
+                for i in range (input_sample_length):
+                    batch_weight_derivative =[]
+                    batch_bias_derivatives = []
+                    batch_loss =0
+                    for j in range(batch_size):
+                        x = shuffled_list1[i*batch_size+j]
+                        y = shuffled_list2[i*batch_size+j]
+                        self.set_input_output(x,y)
+                        self.foreward()
+
+                        batch_loss += loss_function(y_true=self.output_values,y_pred=self.input_for_next_layer[-1])
+
+                        weight_derivative,bias_derivative = self.backward()
+                        batch_weight_derivative.append(weight_derivative)
+                        batch_bias_derivatives.append(bias_derivative)
+                    
+                    batch_loss = batch_loss/batch_size
+                    epoch_loss+=batch_loss
+                    # losses.append(batch_loss)
+
+                    loss_info = f"The loss of the epoch {epoch} batch {i} is:   {batch_loss}\n"
+                    output_file.write(loss_info)
+
+                    sum_weight_derivative = batch_weight_derivative[0]
+                    sum_bias_derivative = batch_bias_derivatives[0]
+                    for i in range(1,batch_size):
+                        for j in range(self.size-1): # len(batch_weight_derivative[i])
+                            sum_weight_derivative[j] = sum_weight_derivative[j]+batch_weight_derivative[i][j]
+                            sum_bias_derivative[j] = sum_bias_derivative[j]+batch_bias_derivatives[i][j]
+
+                    for k in range(self.size-1): # len(sum_weight_derivative)
+                        sum_weight_derivative[k] = sum_weight_derivative[k]/batch_size
+                        self.weights[k] = self.weights[k] - learning_rate*sum_weight_derivative[k]
+
+                        sum_bias_derivative[k] = sum_bias_derivative[k]/batch_size
+                        self.biases[k] = self.biases[k] - learning_rate*sum_bias_derivative[k]
+
+                losses.append(epoch_loss/epoch_size)
+                train_inputs, train_outputs = process(x='x_train.csv',y="y_train.csv")
+                print(f"epoch {epoch+1} train", end=" ")
+                train_loss,train_accuracy = neural.predict(train_inputs,train_outputs)
+                train_accuracies.append(train_accuracy)
+
+                test_inputs, test_outputs = process(x='x_test.csv', y="y_test.csv")
+                print(f"epoch {epoch+1} test", end=" ")
+                test_loss,test_accuracy = neural.predict(test_inputs,test_outputs)
+                print()
+                test_losses.append(sum(test_loss)/len(test_loss))
+                test_accuracies.append(test_accuracy)
+        return losses,test_losses,train_accuracies,test_accuracies
+    
+    def predict(self, input_list, output_list):
+        losses=[]
+        correctly_classified =0
+        incorrectly_classified =0
+        i=0
+        with open("test_lost.txt", 'w') as output_file, open('test_classifications.csv', 'w') as file:
             for x, y in zip(input_list,output_list):
                 self.set_input_output(x,y)
                 self.foreward()
                 i+=1
                 
-                loss = loss_function(y_true=self.output_values,y_pred=self.input_for_next_layer[-1])
-                loss_info = f"The loss of the iteration {i} is:   {loss}\n"
+                loss = self.loss_function(y_true=self.output_values,y_pred=self.input_for_next_layer[-1])
+                losses.append(loss)
+
+                loss_info = f"The loss of the testing sample {i} is:   {loss}\n"
                 output_file.write(loss_info)
 
-                self.backward(learning_rate)
-        
+                max_index = np.argmax(self.input_for_next_layer[-1]) # self.input_for_next_layer[-1] is same as softmax output
 
-def process():
+                if y[max_index]==1:
+                    correctly_classified+=1
+                else:
+                    incorrectly_classified+=1
+
+                file.write(f"{max_index}\n")
+                
+        # print(f"number of correctly classified samples: {correctly_classified}")
+        # print(f"number of incorrectly classified samples: {incorrectly_classified}")
+        accuracy = correctly_classified/(correctly_classified+incorrectly_classified)
+        print(f"Accuracy: {accuracy}")
+
+        return losses,accuracy
+
+            
+
+def process(x,y):
     one_hot_encoded_y = []
     list_x =[]
-    with open('y_train.csv', 'r') as y_file:
+    with open(y, 'r') as y_file:
         csv_reader = csv.reader(y_file)
         for row in csv_reader:
             label = int(row[0])
@@ -158,7 +255,7 @@ def process():
             one_hot_label[label] = 1
             one_hot_encoded_y.append(one_hot_label)
 
-    with open('x_train.csv', 'r') as x_file:
+    with open(x, 'r') as x_file:
         csv_reader_x = csv.reader(x_file)
         
         # Iterate through each row in the CSV file
@@ -173,9 +270,47 @@ def process():
     return list_x , one_hot_encoded_y
     
 
-inputs, outputs = process()
+train_inputs, train_outputs = process(x='x_train.csv',y='y_train.csv')
 
 neural = NeuralNetwork([14,100,40,4])
 neural.create()
 neural.set_activations([ActivationFunctions.relu,ActivationFunctions.relu,ActivationFunctions.softmax])
-neural.train(input_list=inputs,output_list=outputs,loss_function=LossFunctions.categorical_crossentropy,learning_rate=0.01)
+learning_rate = 1
+train_losses,test_losses,train_accuracies,test_acuracies= neural.train(input_list=train_inputs,output_list=train_outputs,loss_function=LossFunctions.categorical_crossentropy,
+                            learning_rate=learning_rate,batch_size=64,epoch_size=200)
+
+# test_inputs, test_outputs = process(x='x_test.csv', y="y_test.csv")
+# neural.predict(test_inputs,test_outputs)
+
+# Create the plot
+plt.figure(figsize=(8, 6))
+plt.plot( train_losses, marker='o', linestyle='-')
+plt.title(f'Iterations vs. Training Loss (learning rate = {learning_rate})')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.grid(True)
+plt.show()
+
+plt.figure(figsize=(8, 6))
+plt.plot( test_losses, marker='o', linestyle='-')
+plt.title(f'Iterations vs. Test Loss (learning rate = {learning_rate})')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.grid(True)
+plt.show()
+
+plt.figure(figsize=(8, 6))
+plt.plot( train_accuracies, marker='o', linestyle='-')
+plt.title(f'Iterations vs. Training Accuracy (learning rate = {learning_rate})')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.grid(True)
+plt.show()
+
+plt.figure(figsize=(8, 6))
+plt.plot( test_acuracies, marker='o', linestyle='-')
+plt.title(f'Iterations vs. Test Accuracy (learning rate = {learning_rate})')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.grid(True)
+plt.show()
