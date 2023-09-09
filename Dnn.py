@@ -144,7 +144,9 @@ class NeuralNetwork:
         test_accuracies =[]
         train_accuracies =[]
         i = 0
-            
+        train_inputs, train_outputs = process(x='x_train.csv',y="y_train.csv")
+        test_inputs, test_outputs = process(x='x_test.csv', y="y_test.csv")
+
         input_sample_length = (len(output_list)//batch_size)
         for epoch in range(epoch_size):
             
@@ -188,12 +190,11 @@ class NeuralNetwork:
                     self.biases[k] = self.biases[k] - learning_rate*sum_bias_derivative[k]
 
             losses.append(epoch_loss/epoch_size)
-            train_inputs, train_outputs = process(x='x_train.csv',y="y_train.csv")
+            
             print(f"epoch {epoch+1} train", end=" ")
             train_loss,train_accuracy = neural.predict(train_inputs,train_outputs)
             train_accuracies.append(train_accuracy)
-
-            test_inputs, test_outputs = process(x='x_test.csv', y="y_test.csv")
+            
             print(f"epoch {epoch+1} test", end=" ")
             test_loss,test_accuracy = neural.predict(test_inputs,test_outputs)
             print()
@@ -206,23 +207,23 @@ class NeuralNetwork:
         correctly_classified =0
         incorrectly_classified =0
         i=0
-        with open('test_classifications.csv', 'w') as file:
-            for x, y in zip(input_list,output_list):
-                self.set_input_output(x,y)
-                self.foreward()
-                i+=1
-                
-                loss = self.loss_function(y_true=self.output_values,y_pred=self.input_for_next_layer[-1])
-                losses.append(loss)
+        # with open('test_classifications.csv', 'w') as file:
+        for x, y in zip(input_list,output_list):
+            self.set_input_output(x,y)
+            self.foreward()
+            i+=1
+            
+            loss = self.loss_function(y_true=self.output_values,y_pred=self.input_for_next_layer[-1])
+            losses.append(loss)
 
-                max_index = np.argmax(self.input_for_next_layer[-1]) # self.input_for_next_layer[-1] is same as softmax output
+            max_index = np.argmax(self.input_for_next_layer[-1]) # self.input_for_next_layer[-1] is same as softmax output
 
-                if y[max_index]==1:
-                    correctly_classified+=1
-                else:
-                    incorrectly_classified+=1
+            if y[max_index]==1:
+                correctly_classified+=1
+            else:
+                incorrectly_classified+=1
 
-                file.write(f"{max_index}\n")
+                # file.write(f"{max_index}\n")
                 
         accuracy = correctly_classified/(correctly_classified+incorrectly_classified)
         print(f"Accuracy: {accuracy}")
@@ -262,9 +263,9 @@ train_inputs, train_outputs = process(x='x_train.csv',y='y_train.csv')
 neural = NeuralNetwork([14,100,40,4])
 neural.create()
 neural.set_activations([ActivationFunctions.relu,ActivationFunctions.relu,ActivationFunctions.softmax])
-learning_rate = 0.001
+learning_rate = 0.01
 train_losses,test_losses,train_accuracies,test_accuracies= neural.train(input_list=train_inputs,output_list=train_outputs,loss_function=LossFunctions.categorical_crossentropy,
-                            learning_rate=learning_rate,batch_size=64,epoch_size=200)
+                            learning_rate=learning_rate,batch_size=32,epoch_size=500)
 
 # test_inputs, test_outputs = process(x='x_test.csv', y="y_test.csv")
 # neural.predict(test_inputs,test_outputs)

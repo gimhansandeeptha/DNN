@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import pickle
 
-learning_rate = 0.001
+learning_rate = 0.1
 rate = str(learning_rate)
 file_name= "lists_"+rate+".pkl"
 with open(file_name, 'rb') as file:
