@@ -265,7 +265,7 @@ neural.create()
 neural.set_activations([ActivationFunctions.relu,ActivationFunctions.relu,ActivationFunctions.softmax])
 learning_rate = 0.01
 train_losses,test_losses,train_accuracies,test_accuracies= neural.train(input_list=train_inputs,output_list=train_outputs,loss_function=LossFunctions.categorical_crossentropy,
-                            learning_rate=learning_rate,batch_size=32,epoch_size=500)
+                            learning_rate=learning_rate,batch_size=64,epoch_size=300)
 
 # test_inputs, test_outputs = process(x='x_test.csv', y="y_test.csv")
 # neural.predict(test_inputs,test_outputs)
