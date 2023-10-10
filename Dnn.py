@@ -4,49 +4,8 @@ import csv
 import matplotlib.pyplot as plt
 import pickle
 
-class ActivationFunctions:
-    @staticmethod
-    def relu(x):
-        return np.maximum(0, x)
-
-    @staticmethod
-    def sigmoid(x):
-        return 1 / (1 + np.exp(-x))
-
-    @staticmethod
-    def tanh(x):
-        return np.tanh(x)
-
-    @staticmethod
-    def softmax(x):
-        exp_x = np.exp(x - np.max(x))
-        return exp_x / exp_x.sum(axis=0)
-
-class LossFunctions:
-    @staticmethod
-    def mean_squared_error(y_true, y_pred):
-        """
-        Calculate the Mean Squared Error (MSE) loss between the true values and predicted values.
-        """
-        return np.mean((y_true - y_pred) ** 2)
-
-    @staticmethod
-    def binary_crossentropy(y_true, y_pred):
-        """
-        Calculate the Binary Cross-Entropy Loss between binary true labels and predicted probabilities.
-        """
-        epsilon = 1e-15  # Small value to avoid division by zero
-        y_pred = np.clip(y_pred, epsilon, 1 - epsilon)  # Clip values to avoid log(0)
-        return -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
-
-    @staticmethod
-    def categorical_crossentropy(y_true, y_pred):
-        """
-        Calculate the Categorical Cross-Entropy Loss between true one-hot encoded labels and predicted probabilities.
-        """
-        epsilon = 1e-15  # Small value to avoid division by zero
-        y_pred = np.clip(y_pred, epsilon, 1 - epsilon)  # Clip values to avoid log(0)
-        return -np.sum(y_true * np.log(y_pred)) / len(y_true) # divided by number of outputs???????????
+import ActivtionFunctions
+import Loss
 
 class NeuralNetwork:
     def __init__(self,neurons):
@@ -62,7 +21,7 @@ class NeuralNetwork:
 
     
     # create weight and bias for i +1 th layer by randomly assingned numbers between 0 and 1.
-    # weight vector is two dimntional  vector. bias vector is one dimentional vector. 
+    # weight vector is two dimntional  vector. bias vector is also a two dimentional vector. 
     def create(self):  
         for i in range (self.size-1):
             weight = np.array([[random.random() for _ in range(self.neurons[i])] for _ in range(self.neurons[i+1])])
@@ -89,7 +48,7 @@ class NeuralNetwork:
     # this function has to be provided with the activation functions in the ActivationFunction class as a list.
     # each value in the activations represent the activation function in the each layer 
     def set_activations(self,activations):
-        all_valid = all(hasattr(ActivationFunctions, func.__name__) for func in activations)
+        all_valid = all(hasattr(ActivtionFunctions.ActivationFunctions, func.__name__) for func in activations)
         if all_valid and len(activations) == self.size-1:
             self.activations = activations
         else:                    
@@ -116,7 +75,7 @@ class NeuralNetwork:
         for i in range(len(self.input_for_next_layer)-2,-1,-1):
 
             # get the derivative (1 or 0) for ReLU
-            if self.activations[i] is ActivationFunctions.relu:
+            if self.activations[i] is ActivtionFunctions.ActivationFunctions.relu:
                 for j in range(len(self.input_for_next_layer[i+1])):
                     if self.input_for_next_layer[i+1][j][0] <= 0:
                         backderivative[j][0] =0
@@ -137,7 +96,7 @@ class NeuralNetwork:
 
             
     
-    def train(self,input_list,output_list,loss_function:LossFunctions,learning_rate:float,batch_size=128,epoch_size=100): 
+    def train(self,input_list,output_list,loss_function:Loss.LossFunctions,learning_rate:float,batch_size=128,epoch_size=100): 
         self.loss_function = loss_function
         losses =[]
         test_losses =[]
@@ -262,10 +221,10 @@ train_inputs, train_outputs = process(x='x_train.csv',y='y_train.csv')
 
 neural = NeuralNetwork([14,100,40,4])
 neural.create()
-neural.set_activations([ActivationFunctions.relu,ActivationFunctions.relu,ActivationFunctions.softmax])
-learning_rate = 0.01
-train_losses,test_losses,train_accuracies,test_accuracies= neural.train(input_list=train_inputs,output_list=train_outputs,loss_function=LossFunctions.categorical_crossentropy,
-                            learning_rate=learning_rate,batch_size=64,epoch_size=300)
+neural.set_activations([ActivtionFunctions.ActivationFunctions.relu,ActivtionFunctions.ActivationFunctions.relu,ActivtionFunctions.ActivationFunctions.softmax])
+learning_rate = 0.05
+train_losses,test_losses,train_accuracies,test_accuracies= neural.train(input_list=train_inputs,output_list=train_outputs,loss_function=Loss.LossFunctions.categorical_crossentropy,
+                            learning_rate=learning_rate,batch_size=64,epoch_size=500)
 
 # test_inputs, test_outputs = process(x='x_test.csv', y="y_test.csv")
 # neural.predict(test_inputs,test_outputs)
